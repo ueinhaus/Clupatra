@@ -9,6 +9,10 @@
 
 #include "DDRec/DetectorData.h"
 
+#include "IMPL/TrackImpl.h"
+#include "MarlinTrk/IMarlinTrack.h"
+#include "UTIL/CellIDDecoder.h"
+
 #include <string>
 
 
@@ -110,19 +114,25 @@ class ClupatraProcessor : public marlin::Processor {
 
   /** helper method to compute a few track segment parameters (start and end points, z spread,...) 
    */
-  void computeTrackInfo(  lcio::Track* lTrk  ) ;
+  void computeTrackInfo( lcio::Track* lTrk  );
 
 
-  void pickUpSiTrackerHits( EVENT::LCCollection* trackCol , LCEvent* evt) ;
+  void pickUpSiTrackerHits( EVENT::LCCollection* trackCol , LCEvent* evt);
+
+  void getIntersectionAddHit(int detID, int layer, TrackImpl* trk, MarlinTrk::IMarlinTrack* mTrk, std::map<int, std::list<TrackerHit*> >&, UTIL::BitField64&);
+
+  void updateTrackStates(TrackImpl*, MarlinTrk::IMarlinTrack*, double, int);
 
   /** Input collection name.
    */
   std::string _colName {};
   std::string _vxdColName {};
   std::string _sitColName {};
+  std::string _setColName {};
   std::string _outColName {};
   std::string _sitDetectorName {};
   std::string _vxdDetectorName {};
+  std::string _setDetectorName {};
 
   std::string  _segmentsOutColName {};
 

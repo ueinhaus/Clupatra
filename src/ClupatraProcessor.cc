@@ -253,7 +253,6 @@ ClupatraProcessor::ClupatraProcessor() : Processor("ClupatraProcessor") ,
   _description = "ClupatraProcessor : nearest neighbour clustering seeded pattern recognition" ;
   
   
-  
   registerInputCollection( LCIO::TRACKERHIT,
 			   "TPCHitCollection" , 
 			   "Name of the tpc hit input collections"  ,
@@ -278,7 +277,6 @@ ClupatraProcessor::ClupatraProcessor() : Processor("ClupatraProcessor") ,
 			      _distCut ,
 			      (float) 40.0 ) ;
 
-
   registerProcessorParameter( "CosAlphaCut" , 
 			      "Cut for max.angle between hits in consecutive layers for seed finding - NB value should be smaller than 1 - default is 0.9999999 !!!"  ,
 			      _cosAlphaCut ,
@@ -289,22 +287,15 @@ ClupatraProcessor::ClupatraProcessor() : Processor("ClupatraProcessor") ,
  			      _nLoop ,
  			      (int) 4 ) ;
   
-  
   registerProcessorParameter( "MinimumClusterSize" , 
 			      "minimum number of hits per cluster"  ,
 			      _minCluSize ,
 			      (int) 6) ;
   
-  
   registerProcessorParameter( "DuplicatePadRowFraction" , 
 			      "allowed fraction of hits in same pad row per track"  ,
 			      _duplicatePadRowFraction,
 			      (float) 0.1 ) ;
-  
-  // registerProcessorParameter( "RCut" , 
-  // 			      "Cut for r_min in mm"  ,
-  // 			      _rCut ,
-  // 			      (float) 0.0 ) ;
   
   registerProcessorParameter( "MaxDeltaChi2" , 
  			      "the maximum delta Chi2  after filtering for which a hit is added to a track segement"  ,
@@ -321,7 +312,6 @@ ClupatraProcessor::ClupatraProcessor() : Processor("ClupatraProcessor") ,
  			      _maxStep ,
  			      (int) 3 ) ;
 
-
   registerProcessorParameter( "PadRowRange" , 
 			      "number of pad rows used in initial seed clustering"  ,
 			      _padRowRange ,
@@ -331,7 +321,6 @@ ClupatraProcessor::ClupatraProcessor() : Processor("ClupatraProcessor") ,
 			      "number of bins in z over total length of TPC - hits from different z bins are nver merged"  ,
 			      _nZBins,
 			      (int) 150 ) ;
-
 
   registerProcessorParameter( "MinLayerFractionWithMultiplicity" , 
 			      "minimum fraction of layers that have a given multiplicity, when forcing a cluster into sub clusters"  ,
@@ -378,12 +367,12 @@ ClupatraProcessor::ClupatraProcessor() : Processor("ClupatraProcessor") ,
 			     _SmoothOn,
 			     bool(false));
 
+
   registerProcessorParameter("pickUpSiHits",
 			     "try to pick up hits from Si-trackers",
 			     _pickUpSiHits,
 			     bool(false));
   
-
   registerOptionalParameter( "SITHitCollection" , 
 			     "name of the SIT hit collections - used to extend TPC tracks if (pickUpSiHits==true)"  ,
 			     _sitColName ,
@@ -393,6 +382,11 @@ ClupatraProcessor::ClupatraProcessor() : Processor("ClupatraProcessor") ,
 			     "name of the VXD hit collections - used to extend TPC tracks if (pickUpSiHits==true)"  ,
 			     _vxdColName ,
 			     std::string("VTXTrackerHits")  ) ;
+
+  registerOptionalParameter( "SETHitCollection" ,
+			     "name of the SET hit collections - used to extend TPC tracks if (pickUpSiHits==true)"  ,
+			     _setColName ,
+			     std::string("SETTrackerHits")  ) ;
   
   registerOptionalParameter( "SITDetectorName" ,
 			     "name of the SIT-like inner Si-tracking barrel detector ",
@@ -403,6 +397,11 @@ ClupatraProcessor::ClupatraProcessor() : Processor("ClupatraProcessor") ,
 			     "name of the VXD-like inner Si-tracking barrel detector ",
 			     _vxdDetectorName ,
 			     std::string("VXD")  ) ;
+
+  registerOptionalParameter( "SETDetectorName" ,
+			     "name of the SET-like outer Si-tracking barrel detector ",
+			     _setDetectorName ,
+			     std::string("SET")  ) ;
 
 
    registerProcessorParameter("CreateDebugCollections",
@@ -1588,108 +1587,117 @@ void ClupatraProcessor::processEvent( LCEvent * evt ) {
 /*************************************************************************************************/
 void ClupatraProcessor::pickUpSiTrackerHits( EVENT::LCCollection* trackCol , LCEvent* evt) {
   
-  /*************************************************************************************************/
-  
   streamlog_out( DEBUG3  ) << " ************ pickUpSiTrackerHits() called - nTracks : " << trackCol->getNumberOfElements() <<std::endl ;
   
   std::map< int , std::list<TrackerHit*> > hLMap ;
-  
   UTIL::BitField64 encoder( LCTrackerCellID::encoding_string() ) ; 
   
 
   if(  parameterSet( "SITHitCollection" ) ) {
     
     LCIterator<TrackerHit> it( evt, _sitColName ) ;
-    
     streamlog_out( DEBUG2  ) << " --  pickUpSiTrackerHits - read SIT hits from collection " <<  _sitColName << "  with size = " << it.size() << "\n" ;
 
     while( TrackerHit* hit = it.next()  ){
-
       streamlog_out( DEBUG0  ) << "     adding SIT space point hit to map : " << hit << std::endl ;
-
-      hLMap[ hit->getCellID0() ].push_back(  hit ) ;
+      hLMap[ hit->getCellID0() ].push_back( hit ) ;
     }    
   }
   if(  parameterSet( "VXDHitCollection" ) ) {
     
     LCIterator<TrackerHit> it( evt, _vxdColName ) ;
     while( TrackerHit* hit = it.next()  ){
-      
       streamlog_out( DEBUG0  ) << "     adding VXD point hit to map : " << hit << std::endl ;
-
-      hLMap[ hit->getCellID0() ].push_back(  hit ) ;
+      hLMap[ hit->getCellID0() ].push_back( hit ) ;
     }    
   }
+  if(  parameterSet( "SETHitCollection" ) ) {
 
+    LCIterator<TrackerHit> it( evt, _setColName ) ;
+    streamlog_out( DEBUG2  ) << " --  pickUpSiTrackerHits - read SET hits from collection " <<  _setColName << "  with size = " << it.size() << "\n" ;
+
+    while( TrackerHit* hit = it.next()  ){
+      streamlog_out( DEBUG0  ) << "     adding SET space point hit to map : " << hit << std::endl ;
+      hLMap[ hit->getCellID0() ].push_back( hit ) ;
+    }
+  }
 
   streamlog_out( DEBUG3 ) << "  *****  hitMap size : " <<   hLMap.size() << std::endl ;
   
   for( std::map< int , std::list<TrackerHit*> >::iterator it= hLMap.begin(), End = hLMap.end() ; it != End ; ++it ){
     
     encoder.setValue( it->first ) ;
-    
     streamlog_out( DEBUG3 ) << "  *****  sensor: " << encoder.valueString()  << " - nHits: " <<  it->second.size()  << std::endl ;
-    
   }
   
-  int nSITLayers = 0 ;
-  int nVXDLayers = 0 ;
-  int sitID = -1 ;
-  int vxdID = -1 ;
+  int nSITLayers = 0;
+  int nVXDLayers = 0;
+  int nSETLayers = 0;
+  int sitID = -1;
+  int vxdID = -1;
+  int setID = -1;
 
   dd4hep::Detector& lcdd = dd4hep::Detector::getInstance();
 
   try{
 
-    dd4hep::DetElement sitDE = lcdd.detector( _sitDetectorName ) ;
-
-    dd4hep::rec::ZPlanarData* sit = sitDE.extension<dd4hep::rec::ZPlanarData>() ;
-
-    sitID = sitDE.id() ;
-    nSITLayers = sit->layers.size() ;
+    dd4hep::DetElement sitDE = lcdd.detector( _sitDetectorName );
+    dd4hep::rec::ZPlanarData* sit = sitDE.extension<dd4hep::rec::ZPlanarData>();
+    sitID = sitDE.id();
+    nSITLayers = sit->layers.size();
 
   }catch(...){
 
-    streamlog_out( ERROR ) << " ==== in pickUpSiTrackerHits() : could not get detector info (ZPlanarData) for SIT  " << std::endl ;
-    return ;
+    streamlog_out( ERROR ) << " ==== in pickUpSiTrackerHits() : could not get detector info (ZPlanarData) for SIT  " << std::endl;
+    return;
   }
-    
 
   try{
 
-    dd4hep::DetElement vxdDE = lcdd.detector( _vxdDetectorName ) ;
-
-    dd4hep::rec::ZPlanarData* vxd = vxdDE.extension<dd4hep::rec::ZPlanarData>() ;
-    
+    dd4hep::DetElement vxdDE = lcdd.detector( _vxdDetectorName );
+    dd4hep::rec::ZPlanarData* vxd = vxdDE.extension<dd4hep::rec::ZPlanarData>();
     vxdID = vxdDE.id() ;
     nVXDLayers = vxd->layers.size() ;
     
   }catch(...){
 
-    streamlog_out( ERROR ) << " ==== in pickUpSiTrackerHits() : could not get detector info (ZPlanarData) for SIT  " << std::endl ;
-    return ;
+    streamlog_out( ERROR ) << " ==== in pickUpSiTrackerHits() : could not get detector info (ZPlanarData) for VXD  " << std::endl;
+    return;
+  }
+
+  try{
+
+    dd4hep::DetElement setDE = lcdd.detector( _setDetectorName );
+    dd4hep::rec::ZPlanarData* set = setDE.extension<dd4hep::rec::ZPlanarData>();
+    setID = setDE.id();
+    nSETLayers = set->layers.size();
+
+  }catch(...){
+
+    streamlog_out( ERROR ) << " ==== in pickUpSiTrackerHits() : could not get detector info (ZPlanarData) for SET  " << std::endl;
+    return;
   }
 
 
-  int nLayers  = nVXDLayers + nSITLayers  ;
+  int nInnerLayers = nVXDLayers + nSITLayers;
+  int nOuterLayers = nSETLayers;
 
 
   // ============ sort tracks wrt pt (1./omega) ===============
   LCCollectionVec* tv  = dynamic_cast<LCCollectionVec*>(trackCol) ;
 
   if( ! tv ) {
-    streamlog_out( ERROR  ) << " *** pickUpSiTrackerHits() :  dynamic_cast<LCCollectionVec*>(trackCol)  failed !! " << std::endl ; 
-    return ; 
+    streamlog_out( ERROR  ) << " *** pickUpSiTrackerHits() :  dynamic_cast<LCCollectionVec*>(trackCol)  failed !! " << std::endl;
+    return;
   }
 
-  std::sort( tv->begin() , tv->end() ,  PtSort()  ) ;
+  std::sort( tv->begin(), tv->end(),  PtSort() );
   
-  for(  LCIterator<TrackImpl> it( trackCol ) ;  TrackImpl* trk = it.next()  ; ) 
+  for( LCIterator<TrackImpl> it( trackCol ); TrackImpl* trk = it.next(); )
     {
-	
 
-      double initial_chi2 = 0 ;
-      int    initial_ndf  = 0 ;
+      double initial_chi2 = 0;
+      int    initial_ndf  = 0;
       
       // ------------------------------------------
 #if 1 // this code works for plain lcio tracks, i.e. in the case where the corresponding KalTrack
@@ -1700,30 +1708,27 @@ void ClupatraProcessor::pickUpSiTrackerHits( EVENT::LCCollection* trackCol , LCE
       // create a temporary MarlinTrk
       //--------------------------------------------
       
-      std::unique_ptr<MarlinTrk::IMarlinTrack> mTrk( _trksystem->createTrack()  ) ;
+      std::unique_ptr<MarlinTrk::IMarlinTrack> mTrk( _trksystem->createTrack() );
 
-      // use track state at last, innermost fitted hit !
-      const EVENT::TrackState* ts = trk->getTrackState( lcio::TrackState::AtFirstHit ) ;
+      // use track state at last, innermost fitted hit!
+      const EVENT::TrackState* ts = trk->getTrackState( lcio::TrackState::AtFirstHit );
       
       int nHit = trk->getTrackerHits().size() ;
       
       if( nHit == 0 || ts ==0 )
-	continue ;
-      
+        continue;
 
-      initial_chi2 = trk->getChi2() ;
-      initial_ndf  = trk->getNdf() ;
+      initial_chi2 = trk->getChi2();
+      initial_ndf  = trk->getNdf();
 
       auto h  =  trk->getTrackerHits()[0] ; // fixme: make sure we got the right TPC hit here !??
 
       streamlog_out( DEBUG3  )  << "  -- extrapolate TrackState : " << lcshort( ts )
-				<< " adding hit: " << h
-				<< std::endl ;
+				<< " adding hit: " << h << std::endl;
       
       //need to add a dummy hit to the track
-      mTrk->addHit(  h ) ;
-      
-      mTrk->initialise( *ts ,  _bfield ,  MarlinTrk::IMarlinTrack::backward ) ;
+      mTrk->addHit( h );
+      mTrk->initialise( *ts , _bfield , MarlinTrk::IMarlinTrack::backward );
     
 #else  //===========================================================================================
       // use the MarlinTrk allready stored with the TPC track
@@ -1740,152 +1745,179 @@ void ClupatraProcessor::pickUpSiTrackerHits( EVENT::LCCollection* trackCol , LCE
       }
 #endif //===========================================================================================
 
-    //--------------------------------------------------
-    // get intersection points with SIT and VXD layers 
-    //-------------------------------------------------
+    //---------------------------------------------------------------
+    // get intersection points with SIT and VXD layers, then with SET
+    //---------------------------------------------------------------
 
 
-    for( int lx=nLayers-1 ; lx >=0 ; --lx) {
+    for ( int lx=nInnerLayers-1; lx >=0; --lx) {
 
-      int detID = (  lx >= nVXDLayers  ?  sitID   :  vxdID ) ;
+      int detID = (  lx >= nVXDLayers  ?  sitID   :  vxdID );
+      int layer = (  lx >= nVXDLayers  ?  lx - nVXDLayers  :  lx  );
 
-      int layer = (  lx >= nVXDLayers  ?  lx - nVXDLayers  :  lx  ) ;
-
-      encoder.reset() ;
-      encoder[ LCTrackerCellID::subdet() ] = detID ;
-      encoder[ LCTrackerCellID::layer()  ] = layer ;
-      int layerID = encoder.lowWord() ;  
-      
-
-      MarlinTrk::Vector3D point ;
-      
-      int sensorID = -1 ;
-
-      streamlog_out( DEBUG3 ) << " *******  pickUpSiTrackerHits - look for intersection with SIT/VXD layer " << layer
-			      << " layerID: " << encoder.valueString()
-			      << std::endl ;
-
-
-      int intersects = mTrk->intersectionWithLayer( layerID, point, sensorID, MarlinTrk::IMarlinTrack::modeClosest ) ;
-      
-      encoder.setValue( sensorID )  ;
-
-      streamlog_out( DEBUG3 ) << " *******  pickUpSiTrackerHits - intersection with SIT/VXD layer " << layer 
-			      << " intersects:  " << MarlinTrk::errorCode( intersects ) 
-			      << " sensorID: " << encoder.valueString() 
-			      << std::endl ;
-      
-      if( intersects == MarlinTrk::IMarlinTrack::success ){
-	
-	std::list<TrackerHit*>& hL = hLMap[ sensorID ] ;
-	
-	streamlog_out( DEBUG3 ) << "    **** found candidate hits : " << hL.size()  
-				<< "         for point " << point << std::endl ;
-	
-	double min = 1.e99 ;
-	double maxDist = 1. ; //FIXME: make parameter - what is reasonable here ?
-	 
-	std::list<TrackerHit*>::iterator bestIt ; 
-
-	// SIT is no longer a strip detector ...
-	// if( detID == ILDDetID::SIT ) {
-	//   bestIt = find_smallest( hL.begin(), hL.end() , StripDistance2<MarlinTrk::Vector3D>( point ) , min ) ;
-	// } else {
-
-	bestIt = find_smallest( hL.begin(), hL.end() , Distance3D2<MarlinTrk::Vector3D>( point ) , min ) ;
-
-	if( bestIt == hL.end() || min  > maxDist ){
-
-	  streamlog_out( DEBUG3 ) << " ######### no close by hit found !! " 
-				  << " (bestIt == hL.end())" << (bestIt == hL.end()) 
-				  << " (min  > maxDist)" << (min  > maxDist) 
-				  << std::endl ;
-	  continue ; // FIXME: need to limit the number of layers w/o hits !!!!!!
-	}
-
-	double deltaChi ;
-
-	streamlog_out( DEBUG3 ) << " will add best matching hit : " << *bestIt << " with distance : " << min << std::endl ;
-
-	int addHit = mTrk->addAndFit( *bestIt , deltaChi, _dChi2Max ) ;
-	    
-	streamlog_out( DEBUG3 ) << "    ****  best matching hit : " <<  dd4hep::rec::Vector3D( (*bestIt)->getPosition() )
-				<< "         added : " << MarlinTrk::errorCode( addHit )
-				<< "   deltaChi2: " << deltaChi 
-				<< std::endl ;
-
-	if( addHit ==  MarlinTrk::IMarlinTrack::success ){
-
-
-	  trk->addHit( *bestIt ) ;
-	  hL.erase( bestIt ) ;
-
-	  IMPL::TrackStateImpl tsi ;
-	  double chi2N; int ndfN ;
-
-	  mTrk->getTrackState( tsi , chi2N , ndfN ) ; 
-
-	  streamlog_out( DEBUG3  )  << "  -- extrapolate TrackState : " << lcshort( (TrackState*)&tsi )  << "\n" 
-				    << " chi2: " << chi2N
-				    << " ndfN: " << ndfN    
-				    << std::endl ;
-
-	}
-
-      }
+      getIntersectionAddHit(detID, layer, trk, mTrk.get(), hLMap, encoder);
     }
-
-    // -------------------------   update the track state ----------------------
-    // FIXME: should this be done in processEvent()  ?
-    lcio::TrackStateImpl* tsi =  new lcio::TrackStateImpl ;
-    double chi2 ;
-    int ndf  ;
-    const dd4hep::rec::Vector3D ipv( 0.,0.,0. );
-    
-    
-    // get track state at the IP 
-    int ret = mTrk->propagate(   ipv, *tsi, chi2, ndf ) ;
-    //    int ret = mTrk->extrapolate( ipv, *tsi, chi2, ndf ) ;
-    
-    if( ret == MarlinTrk::IMarlinTrack::success ){
-      
-      tsi->setLocation(  lcio::TrackState::AtIP ) ;
-      
-
-      // the track state at the IP needs to be the first one
-      //  -> we have to copy the whole vector, and then add 
-      //     all track states except the old one at the IP ....
-      TrackStateVec tsv  = trk->trackStates() ;
-      trk->trackStates().clear() ;
-      
-      trk->addTrackState( tsi ) ;
-      
-      for( int i=0, N=tsv.size() ; i<N ; ++i ){
-
-	if( tsv[i]->getLocation() == lcio::TrackState::AtIP ) {
-
-	  delete  tsv[i] ;
-
-	}else{
-
-	  trk->addTrackState( tsv[i] ) ;
-	}
-      } //-----------------------------------------------------------------
+    updateTrackStates(trk, mTrk.get(), initial_chi2, initial_ndf);
 
 
 
-      trk->setChi2( chi2 + initial_chi2 ) ;
-      trk->setNdf(  ndf  + initial_ndf  ) ;
+    mTrk = std::unique_ptr<MarlinTrk::IMarlinTrack>(_trksystem->createTrack());
 
-    } else { 
+    // use track state at last, innermost fitted hit!
+    ts = trk->getTrackState( lcio::TrackState::AtLastHit );
 
-      delete tsi ;
+    nHit = trk->getTrackerHits().size() ;
 
+    if( nHit == 0 || ts ==0 )
+      continue;
+
+    initial_chi2 = trk->getChi2();
+    initial_ndf  = trk->getNdf();
+
+    h  =  trk->getTrackerHits()[0] ; // fixme: make sure we got the right TPC hit here !??
+
+    streamlog_out( DEBUG3  )  << "  -- extrapolate TrackState : " << lcshort( ts )
+              << " adding hit: " << h << std::endl;
+
+    //need to add a dummy hit to the track
+    mTrk->addHit( h );
+    mTrk->initialise( *ts , _bfield , MarlinTrk::IMarlinTrack::forward );
+
+    for ( int lx=0; lx<nOuterLayers; ++lx){
+
+      getIntersectionAddHit(setID, lx, trk, mTrk.get(), hLMap, encoder);
     }
+    updateTrackStates(trk, mTrk.get(), initial_chi2, initial_ndf);
+
   }
 }
 
  /*************************************************************************************************/
+
+void ClupatraProcessor::getIntersectionAddHit(int detID, int layer, TrackImpl* trk,
+                                              MarlinTrk::IMarlinTrack* mTrk, std::map<int, std::list<TrackerHit*>>& hLMap,
+                                              UTIL::BitField64& encoder){
+
+  encoder.reset() ;
+  encoder[ LCTrackerCellID::subdet() ] = detID;
+  encoder[ LCTrackerCellID::layer()  ] = layer;
+  int layerID = encoder.lowWord();
+
+  MarlinTrk::Vector3D point;
+  int sensorID = -1;
+
+  streamlog_out( DEBUG3 ) << " *******  pickUpSiTrackerHits - look for intersection with SIT/VXD layer " << layer
+              << " layerID: " << encoder.valueString() << std::endl;
+
+  int intersects = mTrk->intersectionWithLayer( layerID, point, sensorID, MarlinTrk::IMarlinTrack::modeClosest );
+
+  encoder.setValue( sensorID );
+
+  streamlog_out( DEBUG3 ) << " *******  pickUpSiTrackerHits - intersection with SIT/VXD layer " << layer
+              << " intersects:  " << MarlinTrk::errorCode( intersects )
+              << " sensorID: " << encoder.valueString()
+              << std::endl;
+
+  if( intersects == MarlinTrk::IMarlinTrack::success ){
+
+    std::list<TrackerHit*>& hL = hLMap[ sensorID ];
+
+    streamlog_out( DEBUG3 ) << "    **** found candidate hits : " << hL.size()
+                            << "         for point " << point << std::endl;
+
+    double min = 1.e99 ;
+    double maxDist = 1. ; //FIXME: make parameter - what is reasonable here ?
+
+    std::list<TrackerHit*>::iterator bestIt ;
+
+    // SIT is no longer a strip detector ...
+    // if( detID == ILDDetID::SIT ) {
+    //   bestIt = find_smallest( hL.begin(), hL.end() , StripDistance2<MarlinTrk::Vector3D>( point ) , min ) ;
+    // } else {
+
+    bestIt = find_smallest( hL.begin(), hL.end() , Distance3D2<MarlinTrk::Vector3D>( point ) , min ) ;
+
+    if( bestIt == hL.end() || min  > maxDist ){
+
+      streamlog_out( DEBUG3 ) << " ######### no close by hit found !! "
+                              << " (bestIt == hL.end())" << (bestIt == hL.end())
+                              << " (min  > maxDist)" << (min  > maxDist)
+                              << std::endl ;
+      return; // FIXME: need to limit the number of layers w/o hits !!!!!!
+    }
+
+    double deltaChi;
+
+    streamlog_out( DEBUG3 ) << " will add best matching hit : " << *bestIt << " with distance : " << min << std::endl;
+
+    int addHit = mTrk->addAndFit( *bestIt , deltaChi, _dChi2Max );
+
+    streamlog_out( DEBUG3 ) << "    ****  best matching hit : " <<  dd4hep::rec::Vector3D( (*bestIt)->getPosition() )
+                            << "         added : " << MarlinTrk::errorCode( addHit )
+                            << "   deltaChi2: " << deltaChi
+                            << std::endl ;
+
+    if( addHit ==  MarlinTrk::IMarlinTrack::success ){
+
+      trk->addHit( *bestIt );
+      hL.erase( bestIt );
+
+      IMPL::TrackStateImpl tsi;
+      double chi2N; int ndfN;
+
+      mTrk->getTrackState( tsi, chi2N, ndfN );
+
+      streamlog_out( DEBUG3 ) << "  -- extrapolate TrackState : " << lcshort( (TrackState*)&tsi )  << "\n"
+                              << " chi2: " << chi2N
+                              << " ndfN: " << ndfN
+                              << std::endl ;
+    }
+
+  }
+}
+
+void ClupatraProcessor::updateTrackStates(TrackImpl* trk, MarlinTrk::IMarlinTrack* mTrk, double ini_chi2, int ini_ndf){
+  // -------------------------   update the track state ----------------------
+  // FIXME: should this be done in processEvent()?
+
+  lcio::TrackStateImpl* tsi =  new lcio::TrackStateImpl;
+  double chi2; int ndf;
+  const dd4hep::rec::Vector3D ipv( 0.,0.,0. );
+
+  // get track state at the IP
+  int ret = mTrk->propagate( ipv, *tsi, chi2, ndf );
+  //    int ret = mTrk->extrapolate( ipv, *tsi, chi2, ndf ) ;
+
+  if( ret == MarlinTrk::IMarlinTrack::success ){
+
+    tsi->setLocation( lcio::TrackState::AtIP );
+
+    // the track state at the IP needs to be the first one
+    //  -> we have to copy the whole vector, and then add
+    //     all track states except the old one at the IP ....
+    TrackStateVec tsv  = trk->trackStates();
+    trk->trackStates().clear() ;
+
+    trk->addTrackState( tsi ) ;
+
+    for( int i=0, N=tsv.size(); i<N; ++i ){
+
+      if( tsv[i]->getLocation() == lcio::TrackState::AtIP ) {
+        delete  tsv[i];
+
+      }else{
+        trk->addTrackState( tsv[i] );
+      }
+    } //-----------------------------------------------------------------
+
+    trk->setChi2( chi2 + ini_chi2 );
+    trk->setNdf(  ndf  + ini_ndf  );
+
+  } else {
+    delete tsi;
+  }
+}
+
 
 void ClupatraProcessor::computeTrackInfo(  lcio::Track* lTrk  ){
   
