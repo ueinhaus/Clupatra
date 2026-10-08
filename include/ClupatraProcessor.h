@@ -10,6 +10,7 @@
 #include "DDRec/DetectorData.h"
 
 #include "IMPL/TrackImpl.h"
+#include "IMPL/TrackerHitImpl.h"
 #include "MarlinTrk/IMarlinTrack.h"
 #include "UTIL/CellIDDecoder.h"
 
@@ -119,9 +120,17 @@ class ClupatraProcessor : public marlin::Processor {
 
   void pickUpSiTrackerHits( EVENT::LCCollection* trackCol , LCEvent* evt);
 
-  void getIntersectionAddHit(int detID, int layer, TrackImpl* trk, MarlinTrk::IMarlinTrack* mTrk, std::map<int, std::list<TrackerHit*> >&, UTIL::BitField64&);
+  std::pair<int, int> loadSubdetectorData(std::string, std::string, std::string,
+                                          std::map< int, std::list<TrackerHit*> >&, dd4hep::Detector&, LCEvent* );
+
+  void prepareTrackHelper(TrackImpl*, MarlinTrk::IMarlinTrack*, int, bool );
+
+  void getIntersectionAddHit(int detID, int layer, TrackImpl* trk, MarlinTrk::IMarlinTrack* mTrk,
+                             std::map<int, std::list<TrackerHit*> >&, UTIL::BitField64&, float, float);
 
   void updateTrackStates(TrackImpl*, MarlinTrk::IMarlinTrack*, double, int);
+
+  //void fillTrackerHitCopyType0(TrackerHit*, TrackerHitImpl*);
 
   /** Input collection name.
    */
