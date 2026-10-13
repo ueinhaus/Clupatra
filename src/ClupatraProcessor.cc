@@ -1710,7 +1710,7 @@ std::pair<int, int> ClupatraProcessor::loadSubdetectorData(std::string collectio
   if( parameterSet( collectionParameter ) ) {
 
       LCIterator<TrackerHit> it( evt, collectionName );
-      streamlog_out( MESSAGE2  ) << " --  pickUpSiTrackerHits - read hits from collection " <<  collectionName << "  with size = " << it.size() << "\n" ;
+      streamlog_out( DEBUG2  ) << " --  pickUpSiTrackerHits - read hits from collection " <<  collectionName << "  with size = " << it.size() << "\n" ;
 
       while( TrackerHit* hit = it.next() ){
         streamlog_out( DEBUG0  ) << "     adding hit to map : " << hit << std::endl;
@@ -1763,14 +1763,14 @@ void ClupatraProcessor::getIntersectionAddHit(int detID, int layer, TrackImpl* t
   MarlinTrk::Vector3D point;
   int sensorID = -1;
 
-  streamlog_out( MESSAGE3 ) << " *******  pickUpSiTrackerHits - look for intersection with SIT/VXD/SET layer " << layer
+  streamlog_out( DEBUG3 ) << " *******  pickUpSiTrackerHits - look for intersection with SIT/VXD/SET layer " << layer
               << " layerID: " << encoder.valueString() << std::endl;
 
   int intersects = mTrk->intersectionWithLayer( layerID, point, sensorID, MarlinTrk::IMarlinTrack::modeClosest );
 
   encoder.setValue( sensorID );
 
-  streamlog_out( MESSAGE3 ) << " *******  pickUpSiTrackerHits - intersection with SIT/VXD/SET layer " << layer
+  streamlog_out( DEBUG3 ) << " *******  pickUpSiTrackerHits - intersection with SIT/VXD/SET layer " << layer
               << " intersects:  " << MarlinTrk::errorCode( intersects )
               << " sensorID: " << encoder.valueString()
               << std::endl;
@@ -1779,11 +1779,11 @@ void ClupatraProcessor::getIntersectionAddHit(int detID, int layer, TrackImpl* t
 
     std::list<TrackerHit*>& hL = hLMap[ sensorID ];
 
-    streamlog_out( MESSAGE3 ) << "    **** found candidate hits: " << hL.size()
+    streamlog_out( DEBUG3 ) << "    **** found candidate hits: " << hL.size()
                             << "         for point " << point << std::endl;
     for (auto hLit=hL.begin(); hLit!=hL.end(); hLit++) {
       auto pos = (*hLit)->getPosition();
-      streamlog_out( MESSAGE3 ) << "    **** with TrackerHit: " << pos[0] << " " << pos[1] << " " << pos[2] <<
+      streamlog_out( DEBUG3 ) << "    **** with TrackerHit: " << pos[0] << " " << pos[1] << " " << pos[2] <<
       " of type " << (*hLit)->getType() << std::endl;
     }
 
@@ -1801,7 +1801,7 @@ void ClupatraProcessor::getIntersectionAddHit(int detID, int layer, TrackImpl* t
 
     if( bestIt == hL.end() || min  > maxDist ){
 
-      streamlog_out( MESSAGE3 ) << " ######### no close by hit found !! "
+      streamlog_out( DEBUG3 ) << " ######### no close by hit found !! "
                               << " (bestIt == hL.end())" << (bestIt == hL.end())
                               << " (min=" << min << " > maxDist=" << maxDist <<")" << (min  > maxDist)
                               << std::endl ;
@@ -1810,11 +1810,11 @@ void ClupatraProcessor::getIntersectionAddHit(int detID, int layer, TrackImpl* t
 
     double deltaChi;
 
-    streamlog_out( MESSAGE3 ) << " will add best matching hit : " << *bestIt << " with distance : " << min << std::endl;
+    streamlog_out( DEBUG3 ) << " will add best matching hit : " << *bestIt << " with distance : " << min << std::endl;
 
     int addHit = mTrk->addAndFit( *bestIt , deltaChi, _dChi2Max );
 
-    streamlog_out( MESSAGE3 ) << "    ****  best matching hit : " <<  dd4hep::rec::Vector3D( (*bestIt)->getPosition() )
+    streamlog_out( DEBUG3 ) << "    ****  best matching hit : " <<  dd4hep::rec::Vector3D( (*bestIt)->getPosition() )
                             << "         added : " << MarlinTrk::errorCode( addHit )
                             << "   deltaChi2: " << deltaChi
                             << std::endl ;
@@ -1822,7 +1822,7 @@ void ClupatraProcessor::getIntersectionAddHit(int detID, int layer, TrackImpl* t
     if( addHit ==  MarlinTrk::IMarlinTrack::success ){
 
 //       if ((*bestIt)->getType() != 0){
-//         streamlog_out( MESSAGE3 ) << " type is not regular point - setting to 0 " << std::endl;
+//         streamlog_out( DEBUG3 ) << " type is not regular point - setting to 0 " << std::endl;
 //         //TrackerHitImpl* hitCopy = new TrackerHitImpl;
 //         //fillTrackerHitCopyType0(*bestIt, hitCopy);
 //         //trk->addHit( hitCopy );
@@ -1885,18 +1885,6 @@ void ClupatraProcessor::updateTrackStates(TrackImpl* trk, MarlinTrk::IMarlinTrac
     delete tsi;
   }
 }
-
-// void ClupatraProcessor::fillTrackerHitCopyType0(TrackerHit* in, TrackerHitImpl* out){
-//   out->setCellID0(in->getCellID0());
-//   out->setCellID1(in->getCellID1());
-//   out->setType(0);
-//   out->setEDep(in->getEDep());
-//   out->setEDepError(in->getEDepError());
-//   out->setTime(in->getTime());
-//   out->setQuality(in->getQuality());
-//   out->setPosition(in->getPosition());
-//   out->setCovMatrix(in->getCovMatrix());
-// }
 
 void ClupatraProcessor::computeTrackInfo(  lcio::Track* lTrk  ){
   
